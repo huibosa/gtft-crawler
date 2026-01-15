@@ -1,3 +1,45 @@
-data/
+# Project data directories
+data/output/
+data/htmls/
+
+# Build directories
 build/
+dist/
+
+# Output directories
 output/
+
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binaries
+*.test
+
+# Coverage files
+*.out
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Temporary files
+tmp/
+*.tmp
+
+# Log files
+*.log
