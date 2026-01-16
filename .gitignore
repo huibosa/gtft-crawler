@@ -1,6 +1,5 @@
 # Project data directories
-data/output/
-data/htmls/
+data/
 
 # Build directories
 build/
