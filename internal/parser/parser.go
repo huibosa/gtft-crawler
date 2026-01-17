@@ -3,6 +3,7 @@ package parser
 import (
 	"fmt"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -321,56 +322,48 @@ func (p *Parser) extractAbstract(doc *goquery.Document, metadata *PaperMetadata)
 }
 
 func (p *Parser) extractKeywords(doc *goquery.Document, metadata *PaperMetadata) error {
-	// Look for keyword sections
+	// Look for specific keyword sections to avoid capturing navigation and other elements
+	// Based on the HTML structure, keywords are in ul elements with specific classes
 	selectors := []string{
-		"[class*='keyword']", "[id*='keyword']",
-		".article-keywords", ".keywords",
-		"span:contains('关键词')", "div:contains('Key words')",
+		"ul.article-keyword",                              // English keywords in ul with article-keyword class
+		"ul[class*='keyword'][class*='cn']",               // Chinese keywords ul elements
+		".article-keywords ul",                            // Keywords within article-keywords divs
+		"div[class*='abstract']:contains('关键词') ul",       // Chinese keywords in abstract divs
+		"div[class*='abstract']:contains('Key words') ul", // English keywords in abstract divs
 	}
 
 	for _, selector := range selectors {
 		doc.Find(selector).Each(func(i int, s *goquery.Selection) {
-			text := s.Text()
+			parentText := s.Parent().Text()
 
-			if strings.Contains(text, "关键词") {
-				// Extract Chinese keywords
-				text = strings.TrimPrefix(text, "关键词:")
-				text = strings.TrimPrefix(text, "关键词：")
-				text = strings.TrimSpace(text)
-
-				if text != "" && len(metadata.KeywordsCN) == 0 {
-					// Split by commas, slashes, or Chinese punctuation
-					keywords := strings.FieldsFunc(text, func(r rune) bool {
-						return r == ',' || r == '，' || r == '/' || r == '、'
-					})
-
-					for _, kw := range keywords {
-						kw = strings.TrimSpace(kw)
-						if kw != "" {
-							metadata.KeywordsCN = append(metadata.KeywordsCN, kw)
-						}
+			// Check if this contains Chinese keywords
+			if strings.Contains(parentText, "关键词") {
+				// Extract Chinese keywords from li elements specifically
+				s.Find("li").Each(func(j int, li *goquery.Selection) {
+					keywordText := strings.TrimSpace(li.Text())
+					// Remove trailing separators like "/ "
+					keywordText = strings.TrimRight(keywordText, "/ ")
+					keywordText = strings.TrimSpace(keywordText)
+					// Validate that this looks like a keyword (short text, not long sentences)
+					if keywordText != "" && len(keywordText) < 100 && !slices.Contains(metadata.KeywordsCN, keywordText) {
+						metadata.KeywordsCN = append(metadata.KeywordsCN, keywordText)
 					}
-				}
+				})
 			}
 
-			if strings.Contains(text, "Key words") {
-				// Extract English keywords
-				text = strings.TrimPrefix(text, "Key words:")
-				text = strings.TrimPrefix(text, "Key words：")
-				text = strings.TrimSpace(text)
-
-				if text != "" && len(metadata.KeywordsEN) == 0 {
-					keywords := strings.FieldsFunc(text, func(r rune) bool {
-						return r == ',' || r == '，' || r == '/' || r == '、'
-					})
-
-					for _, kw := range keywords {
-						kw = strings.TrimSpace(kw)
-						if kw != "" {
-							metadata.KeywordsEN = append(metadata.KeywordsEN, kw)
-						}
+			// Check if this contains English keywords
+			if strings.Contains(parentText, "Key words") {
+				// Extract English keywords from li elements specifically
+				s.Find("li").Each(func(j int, li *goquery.Selection) {
+					keywordText := strings.TrimSpace(li.Text())
+					// Remove trailing separators like "/ "
+					keywordText = strings.TrimRight(keywordText, "/ ")
+					keywordText = strings.TrimSpace(keywordText)
+					// Validate that this looks like a keyword (short text, not long sentences)
+					if keywordText != "" && len(keywordText) < 100 && !slices.Contains(metadata.KeywordsEN, keywordText) {
+						metadata.KeywordsEN = append(metadata.KeywordsEN, keywordText)
 					}
-				}
+				})
 			}
 		})
 	}
